@@ -1,0 +1,96 @@
+name: lab3-rideshare
+
+x-env: &env
+  HOST: 0.0.0.0
+  AUTH_SECRET: ${AUTH_SECRET:-lab3-demo-change-before-public-use}
+  INTERNAL_TOKEN: ${INTERNAL_TOKEN:-lab3-local-internal}
+  ORDER_URL: http://order:3101
+  QUERY_URL: http://query:3102
+  DRIVER_URL: http://driver:3103
+  DISPATCH_URL: http://dispatch:3104
+  PRICING_URL: http://pricing:3105
+
+x-service: &service
+  image: lab3-rideshare:local
+  build: .
+  restart: unless-stopped
+  init: true
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+    start_period: 5s
+
+services:
+  order:
+    <<: *service
+    command: ["node", "services/order/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 3101
+      DB_PATH: /data/order.sqlite
+    volumes: ["order-data:/data"]
+    depends_on:
+      pricing: { condition: service_started }
+      driver: { condition: service_started }
+  query:
+    <<: *service
+    command: ["node", "services/query/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 3102
+      DB_PATH: /data/query.sqlite
+    volumes: ["query-data:/data"]
+    depends_on:
+      driver: { condition: service_started }
+  driver:
+    <<: *service
+    command: ["node", "services/driver/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 3103
+      DB_PATH: /data/driver.sqlite
+    volumes: ["driver-data:/data"]
+  dispatch:
+    <<: *service
+    command: ["node", "services/dispatch/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 3104
+      DB_PATH: /data/dispatch.sqlite
+      OFFER_TTL_MS: ${OFFER_TTL_MS:-15000}
+      DISPATCH_WAIT_MS: ${DISPATCH_WAIT_MS:-45000}
+      DISPATCH_TICK_MS: ${DISPATCH_TICK_MS:-300}
+    volumes: ["dispatch-data:/data"]
+    depends_on:
+      order: { condition: service_started }
+      driver: { condition: service_started }
+  pricing:
+    <<: *service
+    command: ["node", "services/pricing/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 3105
+      DB_PATH: /data/pricing.sqlite
+    volumes: ["pricing-data:/data"]
+  gateway:
+    <<: *service
+    command: ["node", "services/gateway/main.mjs"]
+    environment:
+      <<: *env
+      PORT: 8083
+    ports: ["127.0.0.1:${GATEWAY_PORT:-8083}:8083"]
+    depends_on:
+      order: { condition: service_healthy }
+      query: { condition: service_healthy }
+      driver: { condition: service_healthy }
+      dispatch: { condition: service_healthy }
+      pricing: { condition: service_healthy }
+
+volumes:
+  order-data:
+  query-data:
+  driver-data:
+  dispatch-data:
+  pricing-data:

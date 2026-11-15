@@ -1,0 +1,79 @@
+{
+  "captured_at": "2026-11-15T10:46:42.324Z",
+  "node": "v24.21.0",
+  "independent_business_services": 5,
+  "services": [
+    {
+      "name": "order",
+      "port": 3101,
+      "pid": 1044,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "status": "ok",
+        "service": "order",
+        "database": "ok"
+      }
+    },
+    {
+      "name": "query",
+      "port": 3102,
+      "pid": 21028,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "status": "ok",
+        "service": "query",
+        "database": "ok"
+      }
+    },
+    {
+      "name": "driver",
+      "port": 3103,
+      "pid": 24280,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "service": "driver",
+        "status": "ok"
+      }
+    },
+    {
+      "name": "dispatch",
+      "port": 3104,
+      "pid": 18148,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "service": "dispatch",
+        "status": "ok"
+      }
+    },
+    {
+      "name": "pricing",
+      "port": 3105,
+      "pid": 21020,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "service": "pricing",
+        "status": "ok"
+      }
+    },
+    {
+      "name": "gateway",
+      "port": 8083,
+      "pid": 21540,
+      "process_alive": true,
+      "healthy": true,
+      "health": {
+        "service": "gateway",
+        "status": "ok"
+      }
+    }
+  ],
+  "recovery": {
+    "pending_jobs": [],
+    "pending_events": []
+  }
+}

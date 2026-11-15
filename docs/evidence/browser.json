@@ -1,0 +1,17 @@
+{
+  "executed_at": "2026-11-15T10:21:43.120Z",
+  "browser": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "url": "http://127.0.0.1:8083",
+  "blocked_map_tiles": true,
+  "status": "PASS",
+  "checks": [
+    "无底图时地图标记、坐标和叫车操作可用",
+    "双独立浏览器会话：乘客叫车、司机接单",
+    "乘客同步看到行程中；开始后无普通取消操作",
+    "前端完整流程结束，后端计费9公里=27元",
+    "页面刷新保留身份并从持久化历史恢复已完成订单",
+    "390px移动端无页面横向溢出",
+    "无未捕获JavaScript异常"
+  ],
+  "exceptions": []
+}
