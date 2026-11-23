@@ -1,0 +1,92 @@
+{
+  "started_at": "2026-11-23T05:05:04.247Z",
+  "finished_at": "2026-11-23T05:05:07.514Z",
+  "node": "v24.22.3",
+  "environment": "Node factories bound to independent HTTP ports and isolated persistent databases; real service RPC; fault injection exists only in this runner",
+  "timings": {
+    "offer_ttl_ms": 800,
+    "overall_wait_ms": 5000
+  },
+  "passed": 11,
+  "failed": 0,
+  "results": [
+    {
+      "name": "五个业务服务健康、预设身份和网关隔离",
+      "status": "PASS",
+      "duration_ms": 32,
+      "business_services": 5,
+      "transport": "real HTTP",
+      "databases": "five isolated SQLite files"
+    },
+    {
+      "name": "完整主流程、忙时下线、费用与历史查询",
+      "status": "PASS",
+      "duration_ms": 78,
+      "order_id": "ord_52a7f5c7-e0cb-48a4-a0d4-56ba6d895db5",
+      "final_amount_cents": 2700
+    },
+    {
+      "name": "已到达后取消、重新叫车、旧接单与旧释放均无害",
+      "status": "PASS",
+      "duration_ms": 91,
+      "cancelled_order_id": "ord_26c7eee2-1cff-4a39-b035-39abdd34241c",
+      "rebooked_order_id": "ord_90e300ab-1c02-4c06-8588-eed0f96fc3d3"
+    },
+    {
+      "name": "拒单顺序重派且全部拒绝后有明确失败结果",
+      "status": "PASS",
+      "duration_ms": 36,
+      "order_id": "ord_4033efba-4751-4d3d-9f6e-997f7ff99429",
+      "tried_drivers": 2
+    },
+    {
+      "name": "派单等待中重启、超时重派及迟到接单被拒绝",
+      "status": "PASS",
+      "duration_ms": 1744,
+      "order_id": "ord_213af53b-b4e8-475c-95c3-3ba505d7ecd5"
+    },
+    {
+      "name": "无人可用立即终止，不无限等待",
+      "status": "PASS",
+      "duration_ms": 20,
+      "order_id": "ord_8b818e9c-f6e8-4c3f-8679-ab3d69804ac9"
+    },
+    {
+      "name": "两个订单竞争同一司机，只有一份有效占用",
+      "status": "PASS",
+      "duration_ms": 85,
+      "winning_order_id": "ord_c5c207f8-00f1-4b87-b9d2-504c6769e604",
+      "competing_order_ids": [
+        "ord_c5c207f8-00f1-4b87-b9d2-504c6769e604",
+        "ord_30bc3a87-dc6c-453e-babd-eb782c903df8"
+      ]
+    },
+    {
+      "name": "派单后司机下线，在最终占用时拒绝接单",
+      "status": "PASS",
+      "duration_ms": 45,
+      "order_id": "ord_03a94789-66d3-46f8-9936-f620841a0b48"
+    },
+    {
+      "name": "司机占用已提交但HTTP响应丢失，重启订单服务后幂等恢复",
+      "status": "PASS",
+      "duration_ms": 362,
+      "order_id": "ord_06baa2c5-21a9-4cb0-b738-5650d4bac2eb",
+      "dropped_reply_after_commit": true
+    },
+    {
+      "name": "查询服务停机期间写入、Outbox持久化与重启后自动补投",
+      "status": "PASS",
+      "duration_ms": 361,
+      "order_id": "ord_0421d3a7-7668-457d-a7e0-3b6e9e2dc5a0",
+      "retained_pending_events": 2
+    },
+    {
+      "name": "组合查询依赖降级、完成后待释放任务跨服务重启恢复",
+      "status": "PASS",
+      "duration_ms": 342,
+      "order_id": "ord_0421d3a7-7668-457d-a7e0-3b6e9e2dc5a0",
+      "recovered_release": true
+    }
+  ]
+}

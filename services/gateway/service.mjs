@@ -4,9 +4,9 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { accounts, login, verify } from '../../common/auth.mjs';
+import { readBody, parseJsonObject } from '../../common/body.mjs';
 
 const FRONTEND_DIR = fileURLToPath(new URL('../../frontend/', import.meta.url));
-const MAX_BODY_BYTES = 64 * 1024;
 const ASSETS = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
@@ -44,17 +44,6 @@ function json(res, status, body, requestId) {
 
 function fail(status, code, message) {
   return Object.assign(new Error(message), { status, code });
-}
-
-async function readBody(req) {
-  const chunks = [];
-  let length = 0;
-  for await (const chunk of req) {
-    length += chunk.length;
-    if (length > MAX_BODY_BYTES) throw fail(413, 'BODY_TOO_LARGE', '请求内容过大');
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
 }
 
 function authorize(req, role) {
@@ -107,9 +96,7 @@ export function createGateway(options = {}) {
       }
       if (path === '/api/auth/login' && req.method === 'POST') {
         const raw = await readBody(req);
-        let body;
-        try { body = JSON.parse(raw.toString('utf8')); }
-        catch { throw fail(400, 'INVALID_JSON', '请提交有效的 JSON 请求'); }
+        const body = parseJsonObject(raw, { allowEmpty: false });
         if (!body || typeof body.account_id !== 'string') {
           throw fail(400, 'INVALID_ACCOUNT', '请选择有效的账号');
         }
@@ -142,10 +129,7 @@ export function createGateway(options = {}) {
         if (!['GET', 'HEAD'].includes(req.method)) {
           body = await readBody(req);
           headers['Content-Type'] = 'application/json';
-          if (body.length) {
-            try { JSON.parse(body.toString('utf8')); }
-            catch { throw fail(400, 'INVALID_JSON', '请提交有效的 JSON 请求'); }
-          }
+          parseJsonObject(body);
         }
         let upstream;
         try {

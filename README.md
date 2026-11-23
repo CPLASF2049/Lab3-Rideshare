@@ -4,18 +4,19 @@
 
 **本地只需 Node.js 24+，无需安装 npm 包、数据库服务或消息中间件。** 每个服务独占一个 SQLite 文件，所有跨服务访问均通过真实 HTTP。另提供 Docker Compose。
 
-本次验证：**68 项自动化测试通过、11 组真实服务协作验收通过、7 组真浏览器检查通过**。已保存[作业要求快照](docs/assignment.txt)、执行证据和截图，详见[验证记录](docs/validation.md)。
+2026-11-23 复核：**77 项自动化测试通过、11 组真实服务协作验收通过**。2026-11-15 的 7 组真浏览器检查记录和截图保留，本次未重跑浏览器检查。已保存[作业要求快照](docs/assignment.txt)，新增结果见[复核记录](docs/validation.md#6-2026-11-23-代码复核与增量验证)。
 
 ![乘客叫车界面](docs/images/rider-booking.png)
 
 ## 1. 小组与分工安排
 
-沿用 Lab 2 第 32 组。下表为本实验的分工安排与验收范围，提交前由组员核对；不代表已经发生的个人 Git 提交记录。
+沿用 Lab 2 第 32 组。下表为本实验的分工安排与验收范围，提交前由组员核对。分工安排不代表个人 Git 提交记录。
 
 | 成员 | 学号 | 负责范围 |
 | --- | --- | --- |
 | 陈星岩 | 26113050014 | Order 领域与应用层、司机与派单协作、Saga / Outbox、部署和并发恢复验收 |
-| 李思源 | 26213050248 | Order Query / API 组合、计价、双角色前端与地图、自动化测试、契约与报告 |
+| 李思源 | 26213050248 | Order Query 基础功能与 API 组合、计价服务、双角色前端与地图、业务功能测试 |
+| 李金正 | 26113050066 | 公共 HTTP 与输入校验、订单事件契约及消费校验、查询降级与多订单恢复修复、边界与异常回归测试、服务联调验收及报告修订 |
 
 ## 2. 快速开始
 
@@ -96,7 +97,7 @@ node services/driver/main.mjs
 node --test --test-isolation=none tests/order.unit.test.mjs tests/frontend.unit.test.mjs
 
 # 服务级：真实 HTTP、SQLite、事务回滚与持久化，外部服务可模拟
-node --test --test-isolation=none tests/order.component.test.mjs tests/query.component.test.mjs tests/gateway.component.test.mjs services/*/*.test.mjs
+node --test --test-isolation=none tests/*.component.test.mjs services/*/*.test.mjs
 
 # 两级全部测试
 npm test
@@ -113,6 +114,7 @@ node scripts/check.mjs
 实际测试结果与范围见 [验证记录](docs/validation.md)，原始证据见：
 
 - [自动化测试日志](docs/evidence/tests.tap)：含单元、Order / Query 组件、Driver / Dispatch / Pricing 测试断言。
+- [2026-11-23 增量复核证据](docs/validation.md#6-2026-11-23-代码复核与增量验证)：77 项测试和 11 组真实服务验收，包含 HTTP 分包、事件校验及查询降级回归。
 - [11 组服务集成验收](docs/evidence/acceptance.json)及[完整业务日志](docs/evidence/acceptance.log)：真实 HTTP、独立数据库；覆盖竞争、权限、拒单、超时、服务重启、响应丢失和失败恢复。
 - [真实浏览器结果](docs/evidence/browser.json)：双角色操作、刷新恢复、无底图降级、390px 布局和 JavaScript 异常检查。
 - [独立进程与健康状态](docs/evidence/runtime.json)：一键启动后实际采集，PID 与时间只代表当次运行。

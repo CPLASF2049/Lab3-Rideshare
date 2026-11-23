@@ -56,6 +56,8 @@ Order 为状态裁决唯一权威。开始后普通取消被拒绝。重复到�
 
 事件类型：`order.created.v1` 与 `order.changed.v1`。相同订单的版本从 1 单调递增；投递至 Query 和 Dispatch 两个目标，各自维护投递状态。
 
+Query 与 Dispatch 共用 `common/order-event.mjs` 校验入口。只接受上述两种事件类型，事件及订单 ID 必须为非空字符串且不超过 200 字符。版本必须为正安全整数，事件与快照的订单 ID、版本必须一致，乘客 ID、订单状态、事件时间及订单创建时间须有效。可选司机 ID 非空时也必须为合法字符串。格式错误返回 `400 INVALID_EVENT`，不会写入 Inbox 或更新投影，修正后可沿用原事件 ID 重试。
+
 ```json
 {
   "event_id": "evt_<uuid>",
