@@ -1,6 +1,6 @@
 # Lab 3 验证记录
 
-验证日期：2026-11-15（Asia/Shanghai）。运行环境：Windows、Node.js v24.21.0；应用与后端测试无需第三方 npm 包。
+首次验证日期：2026-11-15（Asia/Shanghai）。首次运行环境：Windows、Node.js v24.21.0。第 1 至 5 节保留首次验证结果，2026-11-23 的增量结果见[第 6 节](#6-2026-11-23-代码复核与增量验证)。应用与后端测试无需第三方 npm 包。
 
 本页汇总实际执行结果；原始时间、用例、订单 ID 和错误注入日志保存在对应证据文件中。测试耗时仅供复现，不是性能或容量结论。
 
@@ -99,3 +99,40 @@ Compose 配置校验通过。源码语法、必要交付物、18 个公开 API o
 本次验证覆盖课程的单节点、每服务单实例实现和列出的错误窗口；没有执行容量压测、跨机网络分区、数据库介质丢失或生产安全验收。恢复依赖持久文件保留和相关服务最终恢复。长期不可用时保留待处理记录并持续重试，可通过内部诊断与日志查看。
 
 CodeArts 远程仓库创建、推送和课程平台提交未执行。本地源码、报告、图、测试与实际证据均已准备，成员分工需要组员按真实工作安排确认。
+
+## 6. 2026-11-23 代码复核与增量验证
+
+运行环境为 Windows、Node.js v24.22.3。修改基于 GitHub 仓库提交 `ad25564`，在本地分支 `fix/input-boundaries-and-team` 完成。README 与报告均新增李金正（26113050066），并明确其负责的公共接口、事件契约、查询恢复、回归测试与联调文档范围。
+
+### 修复内容
+
+| 问题及触发条件 | 修改后的行为 | 代码与验证 |
+| --- | --- | --- |
+| 一个中文字符的 UTF-8 字节分散在两次请求分包中，逐块转字符串导致乱码 | 收齐字节后统一解码，中文和表情保持完整 | [公共请求解析](../common/body.mjs)、[HTTP 组件测试](../tests/http.component.test.mjs) |
+| 无效 UTF-8 被替换字符掩盖，网关允许数组等 JSON 值进入后端 | 网关和业务服务统一拒绝无效 UTF-8、数组、空值及其他非对象 JSON，并保留 64 KiB 请求上限 | [网关组件测试](../tests/gateway.component.test.mjs) |
+| 业务服务遇到无法解码的 URL 路径时返回 500 | 返回 `400 INVALID_PATH` | [HTTP 入口](../common/http.mjs)、[HTTP 组件测试](../tests/http.component.test.mjs) |
+| Query 和 Dispatch 对事件类型、标识、时间及快照的校验不同 | 两端共用校验，错误事件返回 `400 INVALID_EVENT`，不消耗事件 ID | [订单事件校验](../common/order-event.mjs)、[双消费者组件测试](../tests/events.component.test.mjs) |
+| 司机资料为空或 ID 不符时，组合查询可能返回正常标记或错误档案 | 保留订单，返回 `partial=true`、空司机资料及警告，当前订单查询也可降级 | [Query 服务](../services/query/service.mjs)、[查询组件测试](../tests/query.component.test.mjs) |
+| 司机服务不可用且存在多条滞后的有效订单投影时，以跨订单版本号排序可能选中旧单 | 按订单创建时间选取最近记录，并保留降级提示 | [查询组件测试](../tests/query.component.test.mjs) |
+
+原有 68 项自动化测试在修改前全部通过。新增测试在原实现上复现了中文分包、路径错误、事件校验、资料降级和旧单选择问题。修复后新增 9 项测试，全部共 77 项通过。Dispatch 原有测试中的事件类型也同步改为契约规定的类型。
+
+### 本次执行结果
+
+| 检查 | 结果与证据 |
+| --- | --- |
+| 全部自动化测试 | 77 项通过，0 失败、0 取消、0 跳过。[TAP 日志](evidence/review-20261123/tests.tap) |
+| 真实服务协作 | 11 组通过，0 失败。[结构化结果](evidence/review-20261123/acceptance.json)、[请求与恢复日志](evidence/review-20261123/acceptance.log) |
+| JavaScript 语法、OpenAPI 引用与交付物 | [检查日志](evidence/review-20261123/check.log) |
+| 文档链接及 Python 脚本语法 | [检查日志](evidence/review-20261123/docs-check.log) |
+
+复现命令如下。`test:component` 已改用组件测试文件通配符，新增的 HTTP 和事件测试会随服务级测试一起运行。
+
+```powershell
+node --test --test-isolation=none --test-reporter=tap tests/*.test.mjs services/*/*.test.mjs
+node scripts/acceptance.mjs
+node scripts/check.mjs
+python scripts/check_docs.py
+```
+
+本次未重跑浏览器检查，也未运行 Docker 容器。首次验收的测试、浏览器、运行进程记录与图片保持原样，新增日志单独保存在 `docs/evidence/review-20261123`。新增服务验收仍使用测试专用的 800ms 派单期限和 5000ms 总期限，正常配置保持 15s 与 45s。

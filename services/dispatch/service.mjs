@@ -1,7 +1,7 @@
 import { createServer, HttpError, httpJson, response } from '../../common/http.mjs';
 import { openDb, migrate, transaction, uid, now } from '../../common/db.mjs';
+import { validateOrderEvent } from '../../common/order-event.mjs';
 
-const ORDER_STATES = new Set(['MATCHING', 'ASSIGNING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED']);
 const TERMINAL_TASKS = new Set(['COMPLETED', 'CANCELLED', 'FAILED']);
 const ACTIVE_ORDER_STATES = new Set(['MATCHING', 'ASSIGNING']);
 
@@ -93,22 +93,8 @@ export function createDispatch({
       WHERE order_id = ? AND state = 'OFFERED' AND order_status = 'MATCHING'`).run(timestamp, offer.order_id);
   }
 
-  function validateEvent(body) {
-    id(body?.event_id, 'event_id');
-    id(body?.event_type, 'event_type');
-    id(body?.aggregate_id, 'aggregate_id');
-    if (!Number.isSafeInteger(body?.version) || body.version < 1) throw new HttpError(400, 'INVALID_EVENT', '事件版本须为正整数');
-    if (typeof body?.occurred_at !== 'string' || !Number.isFinite(Date.parse(body.occurred_at))) {
-      throw new HttpError(400, 'INVALID_EVENT', '事件发生时间须为有效时间戳');
-    }
-    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)
-      || body.data.id !== body.aggregate_id || body.data.version !== body.version || !ORDER_STATES.has(body.data.status)) {
-      throw new HttpError(400, 'INVALID_EVENT', '事件须包含编号和版本一致的完整订单快照');
-    }
-  }
-
   function ingestEvent(body) {
-    validateEvent(body);
+    validateOrderEvent(body);
     return transaction(db, () => {
       if (db.prepare('SELECT event_id FROM dispatch_inbox WHERE event_id = ?').get(body.event_id)) {
         return { received: true, duplicate: true, applied: false };

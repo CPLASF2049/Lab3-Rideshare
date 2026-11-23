@@ -1,9 +1,9 @@
 import { openDb, migrate, transaction, now } from '../../common/db.mjs';
 import { config } from '../../common/config.mjs';
 import { createServer, HttpError, httpJson, response, log } from '../../common/http.mjs';
+import { validateOrderEvent } from '../../common/order-event.mjs';
 
 const activeSql = "('MATCHING','ASSIGNING','ACCEPTED','ARRIVED','IN_PROGRESS')";
-const states = ['MATCHING','ASSIGNING','ACCEPTED','ARRIVED','IN_PROGRESS','COMPLETED','CANCELLED','FAILED'];
 export function createQuery(options = {}) {
   const cfg = { ...config('query', 3102), ...options };
   const db = openDb(cfg.dbPath);
@@ -19,11 +19,16 @@ export function createQuery(options = {}) {
     );
   `);
   const getDriver = options.getDriver || (id => httpJson(`${cfg.driverUrl}/internal/drivers/${encodeURIComponent(id)}`));
-  function project(event) {
-    const d = event.data;
-    if (typeof event.event_id !== 'string' || event.event_id.length > 160 || typeof event.aggregate_id !== 'string' || !Number.isSafeInteger(event.version) || event.version < 1 || !d || d.id !== event.aggregate_id || d.version !== event.version || typeof d.rider_id !== 'string' || !states.includes(d.status)) {
-      throw new HttpError(400, 'INVALID_EVENT', '订单事件格式不正确');
+  async function loadDriver(id) {
+    const { driver } = await getDriver(id) || {};
+    if (!driver || typeof driver !== 'object' || Array.isArray(driver) || driver.id !== id) {
+      throw new HttpError(502, 'BAD_UPSTREAM_RESPONSE', '司机资料格式无效');
     }
+    return driver;
+  }
+  function project(event) {
+    validateOrderEvent(event);
+    const d = event.data;
     return transaction(db, () => {
       if (db.prepare('SELECT 1 FROM inbox WHERE event_id=?').get(event.event_id)) return { duplicate: true, applied: false };
       const result = db.prepare(`INSERT INTO order_views(id,rider_id,driver_id,status,version,snapshot,projected_at) VALUES(?,?,?,?,?,?,?)
@@ -45,7 +50,7 @@ export function createQuery(options = {}) {
     const { order, projected_at } = found;
     let driver = null; const warnings = [...initialWarnings];
     if (order.driver_id) {
-      try { ({ driver } = await getDriver(order.driver_id)); }
+      try { driver = await loadDriver(order.driver_id); }
       catch { warnings.push({ code: 'DRIVER_UNAVAILABLE', message: '司机资料暂时不可用；订单状态仍可查看和操作，请稍后刷新。' }); }
     }
     return { order, driver, projection_version: order.version, projected_at, sync_pending: order.version < minVersion, partial: warnings.length > 0, warnings };
@@ -58,13 +63,13 @@ export function createQuery(options = {}) {
       let found; const warnings = [];
       if (c.actor.role === 'DRIVER') {
         try {
-          const { driver } = await getDriver(c.actor.id);
+          const driver = await loadDriver(c.actor.id);
           if (!driver.active_order_id) return { order: null, sync_pending: false, partial: false, warnings };
           found = find(driver.active_order_id);
           if (!found) return response(202, { order: null, sync_pending: true, partial: false, warnings });
         } catch {
           warnings.push({ code: 'DRIVER_UNAVAILABLE', message: '当前司机状态暂时无法确认，显示最近同步的订单。' });
-          const row = db.prepare(`SELECT id FROM order_views WHERE driver_id=? AND status IN ${activeSql} ORDER BY version DESC LIMIT 1`).get(c.actor.id);
+          const row = db.prepare(`SELECT id FROM order_views WHERE driver_id=? AND status IN ${activeSql} ORDER BY json_extract(snapshot,'$.created_at') DESC,id DESC LIMIT 1`).get(c.actor.id);
           found = row ? find(row.id) : null;
         }
       } else {
